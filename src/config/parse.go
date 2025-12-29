@@ -18,16 +18,16 @@ type ResourceConfig struct {
 
 type TagGroup struct {
 	// List of Tags to
-	Values  any `yaml:"values" json:"values" jsonschema:"required"`
-	Filters any `yaml:"filters" json"filters"`
+	Values  []map[string]string `yaml:"values" json:"values" jsonschema:"required" validate:"required"`
+	Filters any                 `yaml:"filters" json"filters"`
 }
 
 type Config struct {
 	// Modify what resources Tagitha supports
-	Resources ResourceConfig `yaml:"resources" json:"resources,omitempty"`
+	Resources ResourceConfig `yaml:"resources" json:"resources"`
 	// The working directories. Can be an array of strings or a string
-	Directories any        `validate:"directories-filter,required" yaml"directories" json:"directories" jsonschema:"required"`
-	Tags        []TagGroup `yaml:"tags" json:"tags" jsonschema:"required"`
+	Directories any        `validate:"directories-filter,required" yaml:"directories" json:"directories" jsonschema:"required"`
+	Tags        []TagGroup `yaml:"tags" json:"tags" jsonschema:"required" validate:"required"`
 }
 
 func Parse(configPath string) (Config, error) {
@@ -47,6 +47,11 @@ func Parse(configPath string) (Config, error) {
 		return Config{}, err
 	}
 
+	// Overwriting directories so that its a slice
+	if path, ok := configData.Directories.(string); ok {
+		configData.Directories = []string{path}
+	}
+
 	return configData, nil
 }
 
@@ -56,12 +61,19 @@ func validateDirectories(fl validator.FieldLevel) bool {
 
 	switch value := field.Interface().(type) {
 	case string:
-		return true
+		// Checking if its a dir and it exists
+		info, err := os.Stat(value)
+		return err == nil && info.IsDir()
 
 	case []any:
 		// Looping over slice to check each item is a string
 		for _, item := range value {
-			if _, ok := item.(string); !ok {
+			path, ok := item.(string)
+			if ok {
+				// Checking if its a dir and it exists
+				info, err := os.Stat(path)
+				return err == nil && info.IsDir()
+			} else {
 				return false
 			}
 		}

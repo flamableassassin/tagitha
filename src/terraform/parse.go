@@ -3,15 +3,14 @@ package terraform
 import (
 	"log"
 	"os"
+	"path/filepath"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 )
 
-type Tag struct {
-	Name  string
-	Value string
-}
+var ignoredDirectories = []string{".terraform"}
 
 type TaggableBlock struct {
 	Type      string
@@ -19,7 +18,7 @@ type TaggableBlock struct {
 	Directory string
 	FileName  string
 	Location  hcl.Pos
-	Tags      Tag
+	Tags      map[string]string
 }
 
 // TODO: System to decide how to modify the Terraform when adding tags
@@ -27,11 +26,25 @@ type TaggableBlock struct {
 // - 		Making sure we update managed tags if they exist
 // - Resources with tags that come from other sources like variables
 // TODO: Sort out error handling
-func Parse() *TaggableBlock {
-	data, err := os.ReadFile("/workspaces/tagitha/main.tf")
-	if err != nil {
-		log.Fatal(err)
+func ParseFile(path string, fileInfo os.FileInfo, _ error) error {
+	if fileInfo.IsDir() {
+		return nil
 	}
+
+	// Checking if ignored paths exists in the file path
+	// TODO: Fix this as this is the wrong function for what i want
+	fileDirectories := filepath.SplitList(path)
+	for _, ignoredDirectory := range ignoredDirectories {
+		if slices.Contains(fileDirectories, ignoredDirectory) {
+			return nil
+		}
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
 	file, _ := hclsyntax.ParseConfig(data, "main.tf", hcl.Pos{Byte: 0, Line: 0, Column: 0})
 	log.Printf("test %d", len(file.Bytes))
 	return nil
