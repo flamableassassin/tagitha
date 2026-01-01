@@ -32,11 +32,10 @@ func ParseFile(path string, fileInfo os.FileInfo, _ error) error {
 	}
 
 	// Checking if ignored paths exists in the file path
-	// TODO: Fix this as this is the wrong function for what i want
-	fileDirectories := filepath.SplitList(path)
+	fileDirectories := strings.Split(path, os.PathSeparator)
 	for _, ignoredDirectory := range ignoredDirectories {
 		if slices.Contains(fileDirectories, ignoredDirectory) {
-			return nil
+			return filepath.SkipDir
 		}
 	}
 
