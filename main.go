@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/flamableassassin/tagitha/src/config"
+	"github.com/flamableassassin/tagitha/src/terraform"
 	"github.com/urfave/cli/v3"
 )
 
@@ -53,6 +54,20 @@ func main() {
 
 func entryPoint(ctx context.Context, cmd *cli.Command) error {
 	configPath := cmd.String("configpath")
-	_, err := config.Parse(configPath)
-	return err
+
+	actualConfig, err := config.Parse(configPath)
+	if err != nil {
+		return err
+	}
+
+	var terraformBlocks []terraform.TaggableBlock
+	for _, dir := range actualConfig.Directories {
+		tempBlocks, err := terraform.ParseDirectory(dir)
+		if err != nil {
+			return err
+		}
+		terraformBlocks = append(terraformBlocks, tempBlocks...)
+	}
+
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -12,21 +13,12 @@ import (
 
 var ignoredDirectories = []string{".terraform"}
 
-type TaggableBlock struct {
-	Type      string
-	Name      string
-	Directory string
-	FileName  string
-	Location  hcl.Pos
-	Tags      map[string]string
-}
-
 // TODO: System to decide how to modify the Terraform when adding tags
 // - Resources with existing tags
 // - 		Making sure we update managed tags if they exist
 // - Resources with tags that come from other sources like variables
 // TODO: Sort out error handling
-func ParseFile(path string, fileInfo os.FileInfo, _ error) error {
+func parseFile(path string, fileInfo os.DirEntry, _ error) error {
 	if fileInfo.IsDir() {
 		return nil
 	}
@@ -44,7 +36,16 @@ func ParseFile(path string, fileInfo os.FileInfo, _ error) error {
 		return err
 	}
 
-	file, _ := hclsyntax.ParseConfig(data, "main.tf", hcl.Pos{Byte: 0, Line: 0, Column: 0})
+	file, _ := hclsyntax.ParseConfig(data, fileInfo., hcl.InitialPos)
 	log.Printf("test %d", len(file.Bytes))
 	return nil
+}
+
+func ParseDirectory(directory string) ([]TaggableBlock, error) {
+	//? Does cleaning convert between unix and windows separators
+	directory = filepath.Clean(directory)
+	
+	filepath.WalkDir(directory, parseFile)
+
+	return nil, nil
 }
