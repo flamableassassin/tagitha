@@ -30,6 +30,7 @@ type Config struct {
 	Tags        []TagGroup `yaml:"tags" json:"tags" jsonschema:"required" validate:"required"`
 }
 
+// TODO: Add validation so that a directory isn't already covered by another item in the slice
 func Parse(configPath string) (Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -41,7 +42,6 @@ func Parse(configPath string) (Config, error) {
 
 	// Validation
 	validate := validator.New()
-	// validate.RegisterValidation("directories-filter", validateDirectories)
 
 	if err := yaml.UnmarshalWithOptions(data, &configData, yaml.Validator(validate)); err != nil {
 		return Config{}, err
