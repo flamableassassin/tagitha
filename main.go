@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
+	"fmt"
+	"log/slog"
 	"net/mail"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/flamableassassin/tagitha/src/config"
@@ -13,8 +15,9 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-func main() {
+var log = slog.With(slog.Group("main`"))
 
+func main() {
 	cmd := &cli.Command{
 		Name:        "Tagitha",
 		Description: "Auto tag Terraform resources",
@@ -43,16 +46,36 @@ func main() {
 					return nil
 				},
 			},
+			&cli.StringFlag{
+				Name:        "loglevel",
+				Usage:       "Modify the level of logging Tagitha uses. (DEBUG,INFO,WARN,ERROR)",
+				DefaultText: slog.LevelWarn.String(),
+				Category:    "Logging",
+				OnlyOnce:    true,
+				Required:    false,
+				Validator: func(level string) error {
+					level = strings.ToUpper(level)
+					if !slices.Contains([]string{"DEBUG", "INFO", "WARN", "ERROR"}, level) {
+						return fmt.Errorf("Invalid log level %q. Available levels", level)
+					}
+					return nil
+				},
+			},
 		},
 		Action: entryPoint,
 	}
 
 	if err := cmd.Run(context.Background(), os.Args); err != nil {
-		log.Fatal(err)
+		log.Error(err.Error())
+		os.Exit(1)
 	}
 }
 
 func entryPoint(ctx context.Context, cmd *cli.Command) error {
+	// Setting logging
+	loggingLevel := cmd.String("loglevel")
+	createLogger(loggingLevel, "")
+
 	configPath := cmd.String("configpath")
 
 	actualConfig, err := config.Parse(configPath)
@@ -70,4 +93,38 @@ func entryPoint(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	return nil
+}
+
+// TODO Add format to cli flag
+func createLogger(loggingLevel string, format string) {
+	loggingOptions := &slog.HandlerOptions{}
+
+	switch strings.ToUpper(loggingLevel) {
+	case "DEBUG":
+		loggingOptions.Level = slog.LevelDebug
+		break
+	case "INFO":
+		loggingOptions.Level = slog.LevelInfo
+		break
+	case "ERROR":
+		loggingOptions.Level = slog.LevelError
+		break
+	default:
+		loggingOptions.Level = slog.LevelWarn
+		break
+	}
+
+	var loggingHandler slog.Handler
+
+	switch strings.ToUpper(format) {
+	case "JSON":
+		loggingHandler = slog.NewJSONHandler(os.Stdout, loggingOptions)
+		break
+	default:
+		loggingHandler = slog.NewTextHandler(os.Stdout, loggingOptions)
+	}
+
+	logger := slog.New(loggingHandler)
+	slog.SetDefault(logger)
+
 }

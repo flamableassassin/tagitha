@@ -2,7 +2,6 @@ package config
 
 import (
 	"errors"
-	"log"
 	"os"
 
 	"github.com/go-playground/validator"
@@ -34,7 +33,6 @@ type Config struct {
 func Parse(configPath string) (Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		log.Fatal(err)
 		return Config{}, errors.New("Failed to read config file")
 	}
 
